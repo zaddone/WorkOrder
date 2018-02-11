@@ -1,0 +1,10 @@
+package fitting
+import(
+	"testing"
+	"os"
+	"fmt"
+)
+func Test_GetCurveFittingWeight(t *testing.T){
+	
+
+}

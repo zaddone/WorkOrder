@@ -1,0 +1,88 @@
+package request
+
+import (
+	"math"
+)
+
+type Successive struct {
+	Count   int
+	SumLong float64
+	Diff    float64
+	tmpCans []*CandlesMin
+}
+
+func (self *Successive) Init(cans []*CandlesMin) {
+
+	self.Count = len(cans)
+	self.tmpCans = make([]*CandlesMin, self.Count)
+	self.SumLong = 0
+	for i, _can := range cans {
+		self.SumLong += _can.GetMidLong()
+		self.tmpCans[i] = _can
+	}
+	self.Diff = cans[self.Count-1].GetMidAverage() - cans[0].GetMidAverage()
+
+}
+func (self *Successive) Update(can *CandlesMin) {
+	defer func() {
+		self.tmpCans = append(self.tmpCans, can)
+		self.SumLong += can.GetMidLong()
+	}()
+	if self.Count > 0 {
+		maxCan := self.tmpCans[0]
+		maxDif := math.Abs(can.GetMidAverage() - maxCan.GetMidAverage())
+		maxId := 0
+		ave := (self.SumLong / float64(le))
+		if maxDif < ave {
+			for i, _can := range self.tmpCans[1:] {
+				dif := math.Abs(can.GetMidAverage() - _can.GetMidAverage())
+				if dif > maxDif {
+					maxDif = dif
+					maxId = i+1
+					maxCan = _can
+				}
+			}
+			if maxDif > ave && math.Abs(self.tmpCans[maxId-1].GetMidAverage()-self.tmpCans[0].GetMidAverage()) > ave {
+				su := new(Successive)
+				su.Init(self.tmpCans[:maxId])
+				self.Init(self.tmpCans[maxId:])
+			}
+		}
+	}
+}
+
+func (self *Successive) Check(can *CandlesMin) float64 {
+
+	if self.LastBeginCan == nil {
+		return 0
+	}
+	self.Diff = self.BeginCan.GetMidAverage() - self.LastBeginCan.GetMidAverage()
+	if math.Abs(self.Diff) < (self.LastSumDif / float64(self.LastCount)) {
+		return 0
+	}
+	//	absDif:= math.Abs(self.Diff)
+	//	if absDif < Instr.MinimumTrailingStopDistance{
+	//		return 0
+	//	}
+	dif := can.GetMidAverage() - self.LastBeginCan.GetMidAverage()
+	self.Rate = math.Abs(dif) / ((self.SumDif + self.LastSumDif) / float64(self.Count+self.LastCount))
+	if (dif > 0) == self.Dir {
+		self.Rate = -self.Rate
+		//self.Diff = can.GetMidAverage() - self.BeginCan.GetMidAverage()
+	} else {
+		dif := can.GetMidAverage() - self.BeginCan.GetMidAverage()
+		R := math.Abs(dif) / (self.SumDif / float64(self.Count))
+		if self.Rate > 1 {
+			if R > 1 {
+				return 0
+			}
+		} else {
+			if R < 1 {
+				return 0
+			}
+		}
+	}
+	return self.Rate
+	//	return absDif / ((self.SumDif + self.LastSumDif)/float64(self.Count+self.LastCount))
+
+}
